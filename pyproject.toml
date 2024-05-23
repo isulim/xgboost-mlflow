@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "xgboost-mlflow"
+version = "0.1.0"
+description = "Run experiments of custom XGBoost model using MLFlow deployed in Google Cloud"
+authors = ["Igor Sulim <igosulim@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+xgboost = "^2.0.3"
+click = "^8.1.7"
+omegaconf = "^2.3.0"
+mlflow = "^2.13.0"
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.0.0"
+pandas = "^2.2.2"
+numpy = "^1.26.4"
+matplotlib = "^3.9.0"
+scikit-learn = "^1.5.0"
+
+
+[tool.poetry.group.linters.dependencies]
+mypy = "^1.10.0"
+black = "^24.4.2"
+isort = "^5.13.2"
+
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.2.1"
+pytest-sugar = "^1.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
