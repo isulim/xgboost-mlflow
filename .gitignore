@@ -250,6 +250,7 @@ models/
 .poetry_cache/
 
 !scripts/
+!scripts/mlflow
 !app/models/
 
 .DS_Store
