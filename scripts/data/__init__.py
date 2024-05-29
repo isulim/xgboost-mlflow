@@ -1,0 +1,3 @@
+from scripts.data.step0_configure_envs import configure_envs
+from scripts.data.step1_download_data import data_download
+from scripts.data.step2_preprocessing import preprocess_data
