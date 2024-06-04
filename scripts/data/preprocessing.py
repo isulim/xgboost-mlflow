@@ -86,6 +86,15 @@ def rename_cols(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def int_to_float(df: pd.DataFrame) -> pd.DataFrame:
+    """Change integer columns to float."""
+
+    print("Changing integer columns to float.")
+    for col in df.columns:
+        df[col] = df[col].astype("float64")
+    return df
+
+
 def save_to_csv(df: pd.DataFrame, out: Path) -> None:
     """Save X, y dataframes to CSV."""
 
@@ -107,9 +116,10 @@ def preprocess_data(dataset_path: Path) -> None:
     df = drop_columns(df)
     df = map_binary(df)
     df = rename_cols(df)
+    df = int_to_float(df)
 
     save_to_csv(df, Path(dataset_path, "preprocessed"))
-    print("Preprocessing finished.")
+    print("Preprocessing finished. Data saved in `preprocessed` catalog.")
 
 
 if __name__ == "__main__":

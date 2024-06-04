@@ -1,0 +1,9 @@
+services:
+  mlflow-srv:
+    image: ghcr.io/mlflow/mlflow:v2.13.1
+    container_name: mlflow-srv
+    ports:
+      - 8000:5000
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow.db
+    command: mlflow server --host 0.0.0.0 --port 5000
