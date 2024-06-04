@@ -8,8 +8,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+__all__ = ["data_download"]
 
-def download_dataset(ds: str, output_path: str | Path):
+
+def download_dataset(api, ds: str, output_path: str | Path):
     api.authenticate()
     api.dataset_download_files(dataset=ds, path=output_path, quiet=False, unzip=False)
 
@@ -45,7 +47,7 @@ def data_download(raw_path: Path, dataset_name: str | None = None):
     from kaggle import api  # type: ignore
 
     print("Download start...")
-    download_dataset(dataset_name, raw_path)
+    download_dataset(api, dataset_name, raw_path)
     print("Files downloaded successfully.")
     print("Unzipping files...")
     unzip_dataset(api, dataset_name, raw_path)
