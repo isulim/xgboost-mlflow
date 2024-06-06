@@ -9,7 +9,7 @@ from scripts.mlflow.models import CLASSIFICATION_METRICS
 logger = logging.getLogger("utils.py")
 
 
-def load_data() -> Path:
+def download_data() -> Path:
     """Load data from Kaggle and return base path to data directory."""
 
     configure_envs()

@@ -4,15 +4,13 @@ import logging
 import os
 from pathlib import Path
 
-import xgboost as xgb
 import pandas as pd
 import mlflow
 import optuna
 
-from sklearn.model_selection import train_test_split
-from scripts.data import preprocess_data
+from scripts.data import preprocess_data, split_and_save
 from scripts.mlflow.models import prepare_model
-from scripts.mlflow.utils import get_additional_metric, get_target_metric, load_data
+from scripts.mlflow.utils import get_additional_metric, get_target_metric, download_data
 
 logger = logging.getLogger("train.py")
 
@@ -39,8 +37,9 @@ def objective(
         model.fit(X_train, y_train, eval_set=[(X_val, y_val)])
         y_pred = model.predict(X_val)
 
-        target_metric_func = get_target_metric()
-        target = target_metric_func(y_val, y_pred)
+        target_metric_func = get_target_metric(target_metric_name)
+        target_val = target_metric_func(y_val, y_pred)  # multi target metrics?
+        mlflow.log_metric(target_metric_name, target_val)
 
         for metric_name in metrics:
             metric_value = get_additional_metric(
@@ -52,7 +51,7 @@ def objective(
         if trial.should_prune():
             raise optuna.TrialPruned()
 
-        return target
+        return target_val
 
 
 def train_model() -> None:
@@ -66,23 +65,23 @@ def train_model() -> None:
     # 0. load data (optional download with Kaggle API?)
     base_path = Path(os.getenv("KAGGLE_FILES_DIR"))
     if not Path(base_path, "raw").exists():
-        base_path: Path = load_data()
+        base_path: Path = download_data()
 
     # 1. preprocess dataset
     if not Path(base_path, "preprocessed").exists():
         preprocess_data(base_path)
-    X: pd.DataFrame = pd.read_csv(Path(base_path, "preprocessed", "X_pre.csv"))
-    y: pd.DataFrame = pd.read_csv(Path(base_path, "preprocessed", "y_pre.csv"))
 
     # 2. split dataset
     split_size: float = 0.1
     seed: int = 42
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=split_size, random_state=seed
-    )
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_train, y_train, test_size=split_size, random_state=seed
-    )
+    if not Path(base_path, "train").exists():
+        split_and_save(base_path, split_size=split_size, seed=seed)
+
+    X_train: pd.DataFrame = pd.read_csv(Path(base_path, "train", "X.csv"))
+    y_train: pd.DataFrame = pd.read_csv(Path(base_path, "train", "y.csv"))
+    X_val: pd.DataFrame = pd.read_csv(Path(base_path, "val", "X.csv"))
+    y_val: pd.DataFrame = pd.read_csv(Path(base_path, "val", "y.csv"))
+    train_val_ds = [X_train, y_train, X_val, y_val]
 
     # 3. set mlflow experiment
     MLFLOW_URI: str = "http://localhost:8000"
@@ -99,9 +98,9 @@ def train_model() -> None:
     load_if_exists: bool = True
 
     model_type: str = "random-forest"
-    n_trials: int = 10
+    n_trials: int = 2
     target_metric: str = "accuracy_score"
-    metrics = ["f1_score", "roc_auc_score"]
+    metrics = ["f1_score", "roc_auc_score", "precision_score", "recall_score"]
 
     study_params = {
         "study_name": study_name,
@@ -110,7 +109,6 @@ def train_model() -> None:
         "load_if_exists": load_if_exists,
     }
 
-    train_val_ds = [X_train, y_train, X_val, y_val]
     obj_func = lambda trial: objective(
         trial, model_type, target_metric, metrics, train_val_ds
     )
