@@ -2,11 +2,9 @@ import logging
 import os
 from pathlib import Path
 
-import xgboost as xgb
-
 from scripts.data.configure_envs import configure_envs
 from scripts.data.download_data import data_download
-from scripts.mlflow import CLASSIFICATION_METRICS
+from scripts.mlflow.models import CLASSIFICATION_METRICS
 
 logger = logging.getLogger("utils.py")
 
@@ -20,16 +18,22 @@ def load_data() -> Path:
     return base_path
 
 
-def prepare_model(model_type: str, params: dict) -> xgb.XGBModel:
-    if model_type == "classifier":
-        return xgb.XGBClassifier(**params)
-    elif model_type == "random-forest":
-        return xgb.XGBRFClassifier(**params)
+def get_target_metric(target_metric_name: str):
+    """Return target metric function for the model."""
+
+    if not target_metric_name:
+        target_metric_name = "accuracy_score"
+    try:
+        target_metric_func = CLASSIFICATION_METRICS[target_metric_name]
+    except KeyError:
+        raise KeyError(
+            "Invalid target metric - must be a valid sklearn classification metric function."
+        )
     else:
-        raise ValueError("Model type must be either 'classifier' or 'random-forest'.")
+        return target_metric_func
 
 
-def additional_metric(y_val, y_pred, metric_name: str, target_metric_func):
+def get_additional_metric(y_val, y_pred, metric_name: str, target_metric_func):
     """Calculate additional metric for the model."""
 
     try:

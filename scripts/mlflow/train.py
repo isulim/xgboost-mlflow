@@ -11,8 +11,8 @@ import optuna
 
 from sklearn.model_selection import train_test_split
 from scripts.data import preprocess_data
-from scripts.mlflow import CLASSIFICATION_METRICS
-from scripts.mlflow.utils import additional_metric, prepare_model, load_data
+from scripts.mlflow.models import prepare_model
+from scripts.mlflow.utils import get_additional_metric, get_target_metric, load_data
 
 logger = logging.getLogger("train.py")
 
@@ -39,20 +39,11 @@ def objective(
         model.fit(X_train, y_train, eval_set=[(X_val, y_val)])
         y_pred = model.predict(X_val)
 
-        if not target_metric_name:
-            target_metric_name = "accuracy_score"
-
-        try:
-            target_metric_func = CLASSIFICATION_METRICS[target_metric_name]
-        except KeyError:
-            raise KeyError(
-                "Invalid target metric - must be a valid sklearn classification metric function."
-            )
-
+        target_metric_func = get_target_metric()
         target = target_metric_func(y_val, y_pred)
 
         for metric_name in metrics:
-            metric_value = additional_metric(
+            metric_value = get_additional_metric(
                 y_val, y_pred, metric_name, target_metric_func
             )
             if metric_value:
