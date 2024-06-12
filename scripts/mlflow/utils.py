@@ -18,22 +18,7 @@ def download_data() -> Path:
     return base_path
 
 
-def get_target_metric(target_metric_name: str):
-    """Return target metric function for the model."""
-
-    if not target_metric_name:
-        target_metric_name = "accuracy_score"
-    try:
-        target_metric_func = CLASSIFICATION_METRICS[target_metric_name]
-    except KeyError:
-        raise KeyError(
-            "Invalid target metric - must be a valid sklearn classification metric function."
-        )
-    else:
-        return target_metric_func
-
-
-def get_additional_metric(y_val, y_pred, metric_name: str, target_metric_func):
+def get_metric(y_val, y_pred, metric_name: str):
     """Calculate additional metric for the model."""
 
     try:
@@ -41,11 +26,8 @@ def get_additional_metric(y_val, y_pred, metric_name: str, target_metric_func):
 
     except KeyError:
         logger.warning(
-            f"Invalid metric: {metric_name} - must be a valid sklearn metric function."
+            f"Invalid metric: {metric_name} - must be a valid sklearn metric function (`roc_auc_score` is the target metric)."
         )
-        return
+
     else:
-        if metric_func == target_metric_func:
-            logger.warning(f"Metric {metric_name} is used as the target metric.")
-        else:
-            return metric_func(y_val, y_pred)
+        return metric_func(y_val, y_pred)
