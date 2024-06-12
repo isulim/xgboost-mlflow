@@ -21,15 +21,17 @@ def objective(
         model_type: str,
         additional_metrics: list[str],
         train_val_ds: list[pd.DataFrame],
+        params: dict = None
 ):
     with mlflow.start_run(nested=True):
-        params = {
-            "objective": "binary:logistic",
-            "n_estimators": trial.suggest_int("n_estimators", 50, 150, step=50),
-            "max_leaves": trial.suggest_int("max_leaves", 3, 7, log=True),
-            "max_depth": trial.suggest_int("max_depth", 1, 10, log=True),
-            "random_state": 42,
-        }
+        if not params:
+            params = {
+                "objective": "binary:logistic",
+                "n_estimators": trial.suggest_int("n_estimators", 50, 150, step=50),
+                "max_leaves": trial.suggest_int("max_leaves", 3, 7, log=True),
+                "max_depth": trial.suggest_int("max_depth", 1, 10, log=True),
+                "random_state": 42,
+            }
         mlflow.log_params(params)
         X_train, y_train, X_val, y_val = train_val_ds
 
@@ -56,7 +58,7 @@ def objective(
 
 def train_model(
         base_path: str = "data",
-        model_type: str = "random-forest",
+        model_type: str = "xgb-random-forest",
         n_trials: int = 10,
         additional_metrics: list[str] = (),
         mlflow_host: str = "localhost",
@@ -102,15 +104,12 @@ def train_model(
 
     # 4. set optuna study
     study_name: str = experiment_name.lower().replace(" ", "-")
-    storage: str = "sqlite:///mlflow.db"
-    direction: str = "maximize"
-    load_if_exists: bool = True
 
     study_params = {
         "study_name": study_name,
-        "storage": storage,
-        "direction": direction,
-        "load_if_exists": load_if_exists,
+        "storage": "sqlite:///mlflow.db",
+        "direction": "maximize",
+        "load_if_exists": True,
     }
 
     obj_func = lambda trial: objective(
