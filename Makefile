@@ -7,7 +7,7 @@ download-data:
 preprocess-data:
 	poetry run python scripts/data/preprocessing.py
 
-mlflow-server:
+mlflow-start:
 	docker compose up -d mlflow-srv
 
 mlflow-stop:
