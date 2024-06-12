@@ -1,16 +1,17 @@
 """Load data and split to train/validate/test sets."""
 
 import logging
-import os
 from pathlib import Path
 
-import pandas as pd
+import matplotlib.pyplot as plt
 import mlflow
 import optuna
+import pandas as pd
+from sklearn.metrics import roc_auc_score, roc_curve
 
 from scripts.data import preprocess_data, split_and_save
 from scripts.mlflow.models import prepare_model
-from scripts.mlflow.utils import get_additional_metric, get_target_metric, download_data
+from scripts.mlflow.utils import download_data, get_metric
 
 logger = logging.getLogger("train.py")
 
@@ -18,8 +19,7 @@ logger = logging.getLogger("train.py")
 def objective(
         trial,
         model_type: str,
-        target_metric_name: str,
-        metrics: list[str],
+        additional_metrics: list[str],
         train_val_ds: list[pd.DataFrame],
 ):
     with mlflow.start_run(nested=True):
@@ -35,15 +35,15 @@ def objective(
 
         model = prepare_model(model_type, params)
         model.fit(X_train, y_train, eval_set=[(X_val, y_val)])
-        y_pred = model.predict(X_val)
+        probs = model.predict_proba(X_val)
 
-        target_metric_func = get_target_metric(target_metric_name)
-        target_val = target_metric_func(y_val, y_pred)  # multi target metrics?
-        mlflow.log_metric(target_metric_name, target_val)
+        y_pred = probs[:, 1]
+        target_val = roc_auc_score(y_val, y_pred)
+        mlflow.log_metric("roc_auc_score", target_val)
 
-        for metric_name in metrics:
-            metric_value = get_additional_metric(
-                y_val, y_pred, metric_name, target_metric_func
+        for metric_name in additional_metrics:
+            metric_value = get_metric(
+                y_val, y_pred, metric_name
             )
             if metric_value:
                 mlflow.log_metric(metric_name, metric_value)
@@ -92,7 +92,7 @@ def train_model() -> None:
     mlflow.autolog()  # logging config
 
     # 4. set optuna study
-    study_name: str = "xgboost-random-forest"
+    study_name: str = experiment_name.lower().replace(" ", "-")
     storage: str = "sqlite:///mlflow.db"
     direction: str = "maximize"
     load_if_exists: bool = True
@@ -110,7 +110,7 @@ def train_model() -> None:
     }
 
     obj_func = lambda trial: objective(
-        trial, model_type, target_metric, metrics, train_val_ds
+        trial, model_type, additional_metrics, train_val_ds
     )
     # 5. optimize hyperparams
     with mlflow.start_run():
@@ -126,13 +126,18 @@ def train_model() -> None:
         model = prepare_model(model_type, best_trial.params)
         model.fit(X_train, y_train, eval_set=[(X_val, y_val)])
 
-        signature = mlflow.models.infer_signature(X_train, model.predict(X_train))
-        mlflow.xgboost.log_model(
-            model,
-            f"{study_name}.json",
-            signature=signature,
-            input_example=X_train[:5],
-            registered_model_name=f"{study_name}.model",
-        )
+        probs = model.predict_proba(X_val)
+        y_pred = probs[:, 1]
+
+        fpr, tpr, thresholds = roc_curve(y_val, y_pred)
+        fig = plt.figure(figsize=(12, 8))
+
+        plt.plot([0, 1], [0, 1], 'k--')
+        plt.plot(fpr, tpr)
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC Curve')
+        plt.savefig("ROC-Curve.png")
         mlflow.log_params(best_trial.params)
-        mlflow.log_metric(target_metric, best_trial.value)
+        mlflow.log_metric("roc_auc_score", best_trial.value)
+        mlflow.log_artifact("ROC-Curve.png")
