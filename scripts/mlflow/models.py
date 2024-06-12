@@ -11,12 +11,11 @@ CLASSIFICATION_METRICS = {
     "log_loss": log_loss,
     "precision_score": precision_score,
     "recall_score": recall_score,
-    "roc_auc_score": roc_auc_score,
     "confusion_matrix": confusion_matrix,
 }
 
 
-def prepare_model(model_type: str, params: dict) -> XGBModel:
+def prepare_model(model_type: str, params: dict) -> XGBClassifier | XGBRFClassifier:
     if model_type == "classifier":
         return XGBClassifier(**params)
     elif model_type == "random-forest":
