@@ -1,4 +1,4 @@
-from xgboost import XGBModel, XGBClassifier, XGBRFClassifier
+from xgboost import XGBClassifier, XGBRFClassifier
 
 from sklearn.metrics import *
 
@@ -16,9 +16,9 @@ CLASSIFICATION_METRICS = {
 
 
 def prepare_model(model_type: str, params: dict) -> XGBClassifier | XGBRFClassifier:
-    if model_type == "classifier":
+    if model_type == "xgb-classifier":
         return XGBClassifier(**params)
-    elif model_type == "random-forest":
+    elif model_type == "xgb-random-forest":
         return XGBRFClassifier(**params)
     else:
-        raise ValueError("Model type must be either 'classifier' or 'random-forest'.")
+        raise ValueError("Invalid model type. Use one of: 'xgb-classifier', 'xgb-random-forest'.")
