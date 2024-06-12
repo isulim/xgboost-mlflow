@@ -54,7 +54,18 @@ def objective(
         return target_val
 
 
-def train_model() -> None:
+def train_model(
+        base_path: str = "data",
+        model_type: str = "random-forest",
+        n_trials: int = 10,
+        additional_metrics: list[str] = (),
+        mlflow_host: str = "localhost",
+        mlflow_port: int = 8000,
+        experiment_name: str = "XGBoostRF",
+        split_size: float = 0.1,
+        seed: int = 42,
+
+) -> None:
     # Input data:
     # - raw data -> to preprocess
     # - data_path
@@ -62,8 +73,7 @@ def train_model() -> None:
     # - experiments: MLFlow URI, experiment name, target metric, additional metrics (display list)
     # - model hyperparams: **kwargs
 
-    # 0. load data (optional download with Kaggle API?)
-    base_path = Path(os.getenv("KAGGLE_FILES_DIR"))
+    # 0. download data
     if not Path(base_path, "raw").exists():
         base_path: Path = download_data()
 
@@ -72,8 +82,6 @@ def train_model() -> None:
         preprocess_data(base_path)
 
     # 2. split dataset
-    split_size: float = 0.1
-    seed: int = 42
     if not Path(base_path, "train").exists():
         split_and_save(base_path, split_size=split_size, seed=seed)
 
@@ -84,23 +92,19 @@ def train_model() -> None:
     train_val_ds = [X_train, y_train, X_val, y_val]
 
     # 3. set mlflow experiment
-    MLFLOW_URI: str = "http://localhost:8000"
-    experiment_name: str = "XGBoost Random Forest"
+    mlflow_uri: str = f"http://{mlflow_host}:{mlflow_port}"
 
-    mlflow.set_tracking_uri(MLFLOW_URI)
+    mlflow.set_tracking_uri(mlflow_uri)
     mlflow.set_experiment(experiment_name)
-    mlflow.autolog()  # logging config
+    mlflow.autolog(
+        log_input_examples=True,
+    )
 
     # 4. set optuna study
     study_name: str = experiment_name.lower().replace(" ", "-")
     storage: str = "sqlite:///mlflow.db"
     direction: str = "maximize"
     load_if_exists: bool = True
-
-    model_type: str = "random-forest"
-    n_trials: int = 2
-    target_metric: str = "accuracy_score"
-    metrics = ["f1_score", "roc_auc_score", "precision_score", "recall_score"]
 
     study_params = {
         "study_name": study_name,
