@@ -56,18 +56,23 @@ def prepare_trial_params(trial: optuna.Trial, params: TrialParameters) -> dict |
                 continue
         else:
             parameter_type = parameter.get("value_type")
-            numerical_params = {
+            pars = {
                 "name": param_name,
                 "low": parameter.get("start"),
                 "high": parameter.get("end"),
                 "step": parameter.get("step"),
-                "log": parameter.get("log"),
+                "log": parameter.get("log")
             }
+            suggest_params = {}
+            for p, val in pars.items():
+                if val is not None:
+                    suggest_params[p] = val
+
             if parameter_type == "int":
-                params_dict[param_name] = trial.suggest_int(**numerical_params)
+                params_dict[param_name] = trial.suggest_int(**suggest_params)
                 continue
             elif parameter_type == "float":
-                params_dict[param_name] = trial.suggest_float(**numerical_params)
+                params_dict[param_name] = trial.suggest_float(**suggest_params)
                 continue
 
     return params_dict
