@@ -1,7 +1,10 @@
 import logging
 import os
 from pathlib import Path
+from typing import Optional, Sequence
 
+import optuna
+from optuna import Trial
 
 from scripts.data.configure_envs import configure_envs
 from scripts.data.download_data import data_download
@@ -34,17 +37,37 @@ def get_metric(y_val, y_pred, metric_name: str):
         return metric_func(y_val, y_pred)
 
 
-def trial_params(trial, params: TrialParameters) -> dict | None:
+def prepare_trial_params(trial: optuna.Trial, params: TrialParameters) -> dict | None:
     """Prepare parameters for optuna trial input."""
 
     params_dict = {}
+    for param_name in params.dict():
+        parameter = params.dict()[param_name]
+        if not isinstance(parameter, dict):
+            params_dict[param_name] = parameter
+            continue
 
-    for param in params.dict().values():
-        if not isinstance(param, TrialParameter):
-            params_dict[param.name] = param
-        if len(param.values) == 1:
-            params_dict[param.name] = param.values[0]
+        if (values := parameter.get("values")) is not None:
+            if len(values) == 1:
+                params_dict[param_name] = values[0]
+                continue
+            else:
+                params_dict[param_name] = trial.suggest_categorical(name=param_name, choices=values)
+                continue
         else:
-            params_dict[param.name] = trial.suggest_categorical(param.name, param.values)
+            parameter_type = parameter.get("value_type")
+            numerical_params = {
+                "name": param_name,
+                "low": parameter.get("start"),
+                "high": parameter.get("end"),
+                "step": parameter.get("step"),
+                "log": parameter.get("log"),
+            }
+            if parameter_type == "int":
+                params_dict[param_name] = trial.suggest_int(**numerical_params)
+                continue
+            elif parameter_type == "float":
+                params_dict[param_name] = trial.suggest_float(**numerical_params)
+                continue
 
     return params_dict
