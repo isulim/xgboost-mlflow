@@ -1,7 +1,7 @@
 import logging
 import os
-from dataclasses import dataclass, field
 from pathlib import Path
+from pydantic import BaseModel, Field
 
 from scripts.data.configure_envs import configure_envs
 from scripts.data.download_data import data_download
@@ -34,24 +34,23 @@ def get_metric(y_val, y_pred, metric_name: str):
         return metric_func(y_val, y_pred)
 
 
-@dataclass
-class ClassifierParams:
+class ClassifierParams(BaseModel):
     """Dataclass for classifier parameters."""
 
-    objective: str = field(default="binary:logistic")
-    eta: float = field(default=0.3, metadata={"alias": "learning_rate"})
-    gamma: float = field(default=0, metadata={"alias": "min_split_loss"})
-    max_depth: int = field(default=6)
-    min_child_weight: int = field(default=1)
-    max_delta_step: float = field(default=0.0)
-    subsample: float = field(default=0.8)
-    colsample_bytree: float = field(default=0.8)
-    lambda_: float = field(default=1.0, metadata={"alias": "reg_lambda"})
-    alpha: float = field(default=0.0, metadata={"alias": "reg_alpha"})
-    n_estimators: int = field(default=100)
-    max_leaf_nodes: int = field(default=None)
-    scale_pos_weight: float = field(default=1.0)
-    seed: int = field(default=42)
+    objective: str = Field("binary:logistic")
+    eta: float = Field(0.3, ge=0, le=1.0, alias="learning_rate")
+    gamma: float = Field(0, ge=0, alias="min_split_loss")
+    max_depth = Field(6, ge=0)
+    min_child_weight: int = Field(1, ge=0)
+    max_delta_step: float = Field(0.0)
+    subsample: float = Field(0.8, gt=0, le=1.0)
+    colsample_bytree: float = Field(0.8, gt=0, le=1.0)
+    lambda_: float = Field(1.0, ge=0, alias="reg_lambda")
+    alpha: float = Field(0.0, ge=0, alias="reg_alpha")
+    n_estimators: int = Field(100, gt=0, le=1000)
+    max_leaf_nodes: int = Field(None, ge=0)
+    scale_pos_weight: float = Field(1.0, ge=0)
+    seed: int = Field(42, ge=0)
 
 
 def get_params(params: dict) -> ClassifierParams:
