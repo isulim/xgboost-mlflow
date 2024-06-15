@@ -11,7 +11,7 @@ from sklearn.metrics import roc_auc_score, roc_curve
 
 from scripts.data import preprocess_data, split_and_save
 from scripts.mlflow.models import prepare_model
-from scripts.mlflow.utils import download_data, get_metric
+from scripts.mlflow.utils import TrialParameters, download_data, get_metric, prepare_trial_params
 
 logger = logging.getLogger("train.py")
 
@@ -21,21 +21,14 @@ def objective(
         model_type: str,
         additional_metrics: list[str],
         train_val_ds: list[pd.DataFrame],
-        params: dict = None
+        params: dict | TrialParameters = TrialParameters()
 ):
     with mlflow.start_run(nested=True):
-        if not params:
-            params = {
-                "objective": "binary:logistic",
-                "n_estimators": trial.suggest_int("n_estimators", 50, 150, step=50),
-                "max_leaves": trial.suggest_int("max_leaves", 3, 7, log=True),
-                "max_depth": trial.suggest_int("max_depth", 1, 10, log=True),
-                "random_state": 42,
-            }
-        mlflow.log_params(params)
-        X_train, y_train, X_val, y_val = train_val_ds
+        parameters = prepare_trial_params(trial, params)
 
-        model = prepare_model(model_type, params)
+        mlflow.log_params(parameters)
+        X_train, y_train, X_val, y_val = train_val_ds
+        model = prepare_model(model_type, parameters)
         model.fit(X_train, y_train, eval_set=[(X_val, y_val)])
         probs = model.predict_proba(X_val)
 
