@@ -91,9 +91,17 @@ class ClassifierParams(BaseModel):
         extra = "ignore"
 
 
-def get_params(params: dict) -> ClassifierParams:
-    """Get parameters for model training."""
+def trial_params(trial, params: ClassifierParams) -> dict | None:
+    """Prepare parameters for optuna trial input."""
 
-    parameters = ClassifierParams(**params)
+    params_dict = {}
 
-    return parameters
+    for param in params.dict().values():
+        if not isinstance(param, ClassifierParam):
+            params_dict[param.name] = param
+        if len(param.values) == 1:
+            params_dict[param.name] = param.values[0]
+        else:
+            params_dict[param.name] = trial.suggest_categorical(param.name, param.values)
+
+    return params_dict
