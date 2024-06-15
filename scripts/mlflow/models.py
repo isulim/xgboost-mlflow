@@ -87,6 +87,7 @@ class TrialParameters(BaseModel):
         TrialParameter(name="max_leaf_nodes", value_type="int", start=3, end=7))
     scale_pos_weight: TrialParameter = Field(TrialParameter(name="scale_pos_weight", value_type="float", values=[1.0]))
     random_state: int = Field(42, ge=0)
+    split_size: float = Field(0.1, ge=0, le=0.5)
 
     class Config:
         extra = "ignore"

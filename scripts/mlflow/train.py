@@ -21,10 +21,10 @@ def objective(
         model_type: str,
         additional_metrics: list[str],
         train_val_ds: list[pd.DataFrame],
-        params: dict | TrialParameters = TrialParameters()
+        trial_params: dict | TrialParameters = TrialParameters()
 ):
     with mlflow.start_run(nested=True):
-        parameters = prepare_trial_params(trial, params)
+        parameters = prepare_trial_params(trial, trial_params)
 
         mlflow.log_params(parameters)
         X_train, y_train, X_val, y_val = train_val_ds
@@ -57,9 +57,7 @@ def train_model(
         mlflow_host: str = "localhost",
         mlflow_port: int = 8000,
         experiment_name: str = "XGBoostRF",
-        split_size: float = 0.1,
-        seed: int = 42,
-
+        trial_parameters: dict | TrialParameters = TrialParameters(),
 ) -> None:
     # Input data:
     # - raw data -> to preprocess
@@ -76,6 +74,8 @@ def train_model(
     if not Path(base_path, "preprocessed").exists():
         preprocess_data(base_path)
 
+    split_size = trial_parameters.get("split_size", 0.1)
+    seed = trial_parameters.get("random_state", 42)
     # 2. split dataset
     if not Path(base_path, "train").exists():
         split_and_save(base_path, split_size=split_size, seed=seed)
@@ -106,7 +106,7 @@ def train_model(
     }
 
     obj_func = lambda trial: objective(
-        trial, model_type, additional_metrics, train_val_ds
+        trial, model_type, additional_metrics, train_val_ds, trial_parameters
     )
     # 5. optimize hyperparams
     with mlflow.start_run():
